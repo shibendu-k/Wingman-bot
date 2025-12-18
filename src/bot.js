@@ -13,6 +13,9 @@ import advancedFeatures from './services/advancedFeatures.js';
 import presenceManager from './services/PresenceManager.js';
 import { getAllPersonalities } from './services/personalities.js';
 
+// Cache known disconnect reasons as a Set for O(1) lookup performance
+const KNOWN_DISCONNECT_REASONS = new Set(Object.values(DisconnectReason));
+
 /**
  * Wingman Bot - Main bot logic
  */
@@ -28,9 +31,6 @@ class WingmanBot {
     // Reconnection delay constants (in milliseconds)
     this.initialReconnectDelay = 3000;  // 3 seconds
     this.maxReconnectDelay = 60000;     // 60 seconds (1 minute)
-    
-    // Cache known disconnect reasons for efficiency
-    this.knownDisconnectReasons = Object.values(DisconnectReason);
   }
 
   /**
@@ -144,7 +144,7 @@ class WingmanBot {
       // Check if this is a recognized disconnect reason
       // Use typeof to handle 0 properly (0 is a valid number but falsy)
       const hasStatusCode = typeof statusCode === 'number';
-      const isKnownReason = hasStatusCode && this.knownDisconnectReasons.includes(statusCode);
+      const isKnownReason = hasStatusCode && KNOWN_DISCONNECT_REASONS.has(statusCode);
       
       // Handle unknown/unrecognized status codes (like 405)
       // This includes non-standard HTTP codes or any code not in DisconnectReason enum

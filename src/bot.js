@@ -130,7 +130,41 @@ class WingmanBot {
 
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+      
+      // Check if this is a recognized disconnect reason
+      const knownReasons = Object.values(DisconnectReason);
+      const isKnownReason = knownReasons.includes(statusCode);
+      
+      // Handle specific disconnect reasons
+      if (statusCode === DisconnectReason.loggedOut) {
+        logger.info('Logged out from WhatsApp', { reason: statusCode });
+        console.log('\n🔓 Logged out from WhatsApp. Please restart the bot and scan QR code again.\n');
+        return;
+      }
+      
+      // Handle unknown/unrecognized status codes (like 405)
+      if (!isKnownReason && statusCode) {
+        logger.error('Unknown disconnect reason', { 
+          statusCode,
+          error: lastDisconnect?.error?.message,
+          reconnectAttempts: this.reconnectAttempts
+        });
+        
+        console.error(`\n❌ Connection failed with unrecognized error code: ${statusCode}`);
+        console.error('💡 This usually indicates an authentication or session problem.\n');
+        console.error('📋 Troubleshooting steps:');
+        console.error('   1. Delete the "auth_info_baileys" folder');
+        console.error('   2. Restart the bot with: npm start');
+        console.error('   3. Scan the QR code again with WhatsApp');
+        console.error('   4. If issue persists, check your internet connection\n');
+        console.error('⚠️  Bot will not attempt to reconnect for unrecognized errors.\n');
+        
+        // Don't attempt to reconnect for unknown errors
+        return;
+      }
+      
+      // For known disconnect reasons (except loggedOut), attempt reconnection
+      const shouldReconnect = true;
       
       logger.info('Connection closed', { 
         shouldReconnect,
@@ -170,8 +204,6 @@ class WingmanBot {
         console.log(`\n⏳ Reconnecting in ${backoffDelay / 1000} seconds... (Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
         this.reconnectTimeout = setTimeout(() => this.reconnect(), backoffDelay);
-      } else if (statusCode === DisconnectReason.loggedOut) {
-        console.log('\n🔓 Logged out from WhatsApp. Please restart the bot and scan QR code again.\n');
       }
     } else if (connection === 'open') {
       this.isReady = true;

@@ -13,6 +13,9 @@ import advancedFeatures from './services/advancedFeatures.js';
 import presenceManager from './services/PresenceManager.js';
 import { getAllPersonalities } from './services/personalities.js';
 
+// Cache known disconnect reasons as a Set for O(1) lookup performance
+const KNOWN_DISCONNECT_REASONS = new Set(Object.values(DisconnectReason));
+
 /**
  * Wingman Bot - Main bot logic
  */
@@ -130,10 +133,82 @@ class WingmanBot {
 
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
       
-      logger.info('Connection closed', { 
-        shouldReconnect,
+      // Handle logged out status (no reconnection)
+      if (statusCode === DisconnectReason.loggedOut) {
+        logger.info('Logged out from WhatsApp', { reason: statusCode });
+        console.log('\n🔓 Logged out from WhatsApp. Please restart the bot and scan QR code again.\n');
+        return;
+      }
+      
+      // Check if this is a recognized disconnect reason
+      // Use typeof to handle 0 properly (0 is a valid number but falsy)
+      const hasNumericStatusCode = typeof statusCode === 'number';
+      const isKnownReason = hasNumericStatusCode && KNOWN_DISCONNECT_REASONS.has(statusCode);
+      
+      // Handle unknown/unrecognized status codes (like 405)
+      // This includes non-standard HTTP codes or any code not in DisconnectReason enum
+      if (hasNumericStatusCode && !isKnownReason) {
+        logger.error('Unknown disconnect reason', { 
+          statusCode,
+          error: lastDisconnect?.error?.message,
+          reconnectAttempts: this.reconnectAttempts
+        });
+        
+        console.error(`\n❌ Connection failed with unrecognized error code: ${statusCode}`);
+        
+        // Provide specific guidance for 405 errors
+        // In WhatsApp/Baileys context, 405 typically indicates multiple active sessions
+        // WhatsApp's servers reject the connection when another session is already active
+        if (statusCode === 405) {
+          console.error('💡 Error 405 (Method Not Allowed) - Two possible causes:\n');
+          console.error('   ⚠️  CAUSE 1: CORRUPTED AUTH SESSION (most likely if NO QR code shown)');
+          console.error('   • The auth_info_baileys folder contains an invalid/corrupted session');
+          console.error('   • Bot tries to connect with this bad session and fails immediately');
+          console.error('   • No QR code appears because bot thinks it has valid credentials\n');
+          console.error('   ⚠️  CAUSE 2: MULTIPLE ACTIVE SESSIONS (if QR code WAS shown)');
+          console.error('   • Another WhatsApp Web/bot is already connected with this number');
+          console.error('   • WhatsApp only allows 1 bot session per number at a time\n');
+          console.error('📋 SOLUTION - Follow these steps IN ORDER:\n');
+          console.error('   1. STOP this bot (if running)');
+          console.error('   2. STOP all other WhatsApp bots using this number');
+          console.error('   3. Open WhatsApp on phone → Settings → Linked Devices');
+          console.error('   4. LOG OUT ALL linked devices (computers, tablets, etc.)');
+          console.error('   5. WAIT 30 seconds for WhatsApp servers to sync');
+          console.error('   6. Delete auth folder (THIS IS CRITICAL):');
+          console.error('      Linux/Mac: rm -rf auth_info_baileys');
+          console.error('      Windows: rmdir /s /q auth_info_baileys');
+          console.error('   7. Verify deletion (should show NOTHING):');
+          console.error('      Linux/Mac: ls -la | grep auth_info_baileys');
+          console.error('      Windows: dir | findstr auth_info_baileys');
+          console.error('   8. WAIT another 30 seconds');
+          console.error('   9. START bot: npm start');
+          console.error('   10. SCAN the QR code (it MUST appear now)\n');
+          console.error('💡 IMPORTANT: If you do NOT see a QR code after step 9, the auth folder');
+          console.error('   was not properly deleted. Go back to step 6 and delete it manually.\n');
+          console.error('💡 STILL NOT WORKING after following ALL steps?');
+          console.error('   • The session may be stuck on WhatsApp servers');
+          console.error('   • Wait 5-10 minutes before trying again');
+          console.error('   • Or try using a DIFFERENT phone number for this bot\n');
+        } else {
+          console.error('💡 This usually indicates an authentication or session problem.\n');
+          console.error('📋 Troubleshooting steps:');
+          console.error('   1. Delete the "auth_info_baileys" folder');
+          console.error('   2. Restart the bot with: npm start');
+          console.error('   3. Scan the QR code again with WhatsApp');
+          console.error('   4. If issue persists, check your internet connection\n');
+        }
+        
+        console.error('⚠️  Bot will not attempt to reconnect for unrecognized errors.\n');
+        
+        // Don't attempt to reconnect for unknown errors
+        return;
+      }
+      
+      // At this point, we have either:
+      // 1. A known, recoverable DisconnectReason (e.g., connectionClosed, connectionLost, etc.)
+      // 2. No status code (undefined/null) - treat as recoverable and attempt reconnection
+      logger.info('Connection closed - attempting reconnection', { 
         reason: statusCode,
         reconnectAttempts: this.reconnectAttempts
       });
@@ -144,7 +219,8 @@ class WingmanBot {
         this.reconnectTimeout = null;
       }
 
-      if (shouldReconnect && !this.isReconnecting) {
+      // Proceed with reconnection if not already reconnecting
+      if (!this.isReconnecting) {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
           logger.error('Max reconnection attempts reached. Please restart the bot manually.');
           console.error('\n❌ Max reconnection attempts reached.');
@@ -170,8 +246,6 @@ class WingmanBot {
         console.log(`\n⏳ Reconnecting in ${backoffDelay / 1000} seconds... (Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
         this.reconnectTimeout = setTimeout(() => this.reconnect(), backoffDelay);
-      } else if (statusCode === DisconnectReason.loggedOut) {
-        console.log('\n🔓 Logged out from WhatsApp. Please restart the bot and scan QR code again.\n');
       }
     } else if (connection === 'open') {
       this.isReady = true;

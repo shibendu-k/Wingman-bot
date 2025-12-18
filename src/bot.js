@@ -97,16 +97,17 @@ class WingmanBot {
 
       // Start new connection
       await this.start();
+      
+      // Note: isReconnecting flag is reset in handleConnection when connection opens
+      // reconnectAttempts counter is managed in handleConnection (incremented on disconnect, reset on success)
     } catch (error) {
-      logger.error('Reconnection failed', error);
+      logger.error('Reconnection failed during start()', error);
+      
+      // Reset the flag so future reconnection attempts can proceed
       this.isReconnecting = false;
       
-      // If reconnection fails, schedule another attempt
-      if (this.reconnectAttempts < this.maxReconnectAttempts) {
-        const backoffDelay = Math.min(3000 * Math.pow(2, this.reconnectAttempts), 60000);
-        logger.info('Scheduling retry after failed reconnection', { delayMs: backoffDelay });
-        this.reconnectTimeout = setTimeout(() => this.reconnect(), backoffDelay);
-      }
+      // Don't increment reconnectAttempts here as it's already incremented in handleConnection
+      // Just log the error - the next disconnect will trigger another attempt if within limits
     }
   }
 

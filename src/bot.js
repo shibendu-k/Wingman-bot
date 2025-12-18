@@ -171,8 +171,12 @@ class WingmanBot {
           console.error('   2. Open WhatsApp on your phone → Settings → Linked Devices');
           console.error('   3. Carefully check and LOG OUT ALL linked devices (computers, tablets, etc.)');
           console.error('   4. WAIT 30 seconds for WhatsApp servers to recognize the logout');
-          console.error('   5. On this machine, run: rm -rf auth_info_baileys');
-          console.error('   6. Verify folder is deleted: ls -la | grep auth_info_baileys (should show nothing)');
+          console.error('   5. Delete auth folder:');
+          console.error('      Linux/Mac: rm -rf auth_info_baileys');
+          console.error('      Windows: rmdir /s /q auth_info_baileys');
+          console.error('   6. Verify folder is deleted (should show nothing):');
+          console.error('      Linux/Mac: ls -la | grep auth_info_baileys');
+          console.error('      Windows: dir | findstr auth_info_baileys');
           console.error('   7. Restart this bot: npm start');
           console.error('   8. Scan the NEW QR code with WhatsApp\n');
           console.error('💡 STILL NOT WORKING? The session may be stuck on WhatsApp servers:');

@@ -32,7 +32,6 @@ class WingmanBot {
 
       const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: true,
         logger: pino({ level: 'silent' }),
         browser: ['Wingman Bot', 'Chrome', '1.0.0']
       });

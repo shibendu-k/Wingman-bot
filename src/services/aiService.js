@@ -1,284 +1,164 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import config from '../config.js';
-import { getPersonality } from './personalities.js';
+import { config } from '../config.js';
 import { logger } from '../utils/logger.js';
+import { getPersonalityPrompt } from './personalities.js';
 
 /**
- * AI Service - Handles Google Gemini API interactions
+ * AI Service - Google Gemini Integration
  */
 class AIService {
   constructor() {
-    if (!config.geminiApiKey) {
-      throw new Error('GEMINI_API_KEY not configured');
-    }
-    
     this.genAI = new GoogleGenerativeAI(config.geminiApiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+    this.model = null;
   }
 
   /**
-   * Build context from conversation history
+   * Initialize AI service
    */
-  buildContext(history) {
-    if (!history || history.length === 0) {
+  async init() {
+    try {
+      this.model = this.genAI.getGenerativeModel({ 
+        model: config.geminiModel,
+        generationConfig: {
+          temperature: 0.9,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: 1024,
+        },
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_NONE"
+          },
+          {
+            category: "HARM_CATEGORY_HATE_SPEECH",
+            threshold: "BLOCK_NONE"
+          },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_NONE"
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_NONE"
+          }
+        ]
+      });
+      logger.info('🤖 AI Service initialized with Gemini');
+    } catch (error) {
+      logger.error('Failed to initialize AI:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Detect language/dialect from text
+   */
+  detectLanguage(text) {
+    // Simple heuristic detection
+    const hasHindi = /[\u0900-\u097F]/.test(text);
+    const hasBengali = /[\u0980-\u09FF]/.test(text);
+    const hasEnglish = /[a-zA-Z]/.test(text);
+    
+    if (hasHindi && hasEnglish) return 'Hinglish';
+    if (hasBengali && hasEnglish) return 'Benglish';
+    if (hasHindi) return 'Hindi';
+    if (hasBengali) return 'Bengali';
+    return 'English';
+  }
+
+  /**
+   * Build conversation context from history
+   */
+  buildContext(conversation) {
+    if (!conversation || !conversation.messages || conversation.messages.length === 0) {
       return '';
     }
     
-    // Take last 10 messages for context
-    const recentHistory = history.slice(-10);
+    // Get last 10 messages for context
+    const recentMessages = conversation.messages.slice(-10);
     
-    return '\n\nRecent conversation:\n' + recentHistory.map(msg => 
-      `${msg.sender === 'user' ? 'Them' : 'You'}: ${msg.text}`
-    ).join('\n');
-  }
-
-  /**
-   * Detect language from text
-   */
-  detectLanguage(text) {
-    // Simple language detection
-    const hindiPattern = /[\u0900-\u097F]/;
-    const hasHindi = hindiPattern.test(text);
+    let context = '\n\n=== CONVERSATION HISTORY ===\n';
+    recentMessages.forEach(msg => {
+      const role = msg.role === 'user' ? 'THEM' : 'YOU';
+      context += `${role}: ${msg.content}\n`;
+    });
+    context += '=== END HISTORY ===\n\n';
     
-    if (hasHindi) return 'Hindi/Hinglish';
-    return 'English';
+    return context;
   }
 
   /**
    * Generate AI suggestion
    */
-  async generateSuggestion(message, personalityKey = 'superhuman', history = []) {
+  async generateSuggestion(userMessage, personality = 'superhuman', conversation = null) {
     try {
-      const personality = getPersonality(personalityKey);
-      const context = this.buildContext(history);
-      const language = this.detectLanguage(message);
+      const detectedLang = this.detectLanguage(userMessage);
+      const personalityPrompt = getPersonalityPrompt(personality);
       
-      const prompt = `${personality.prompt}
+      // Build context from conversation history
+      const contextHistory = conversation ? this.buildContext(conversation) : '';
+      
+      const systemPrompt = `${personalityPrompt}
 
-${context}
+DETECTED LANGUAGE: ${detectedLang}
+YOU MUST RESPOND IN ${detectedLang} - Match the EXACT language, dialect, and style of the input.
 
-They just sent: "${message}"
+${contextHistory}
 
-Respond in ${language}. Generate a natural, conversational reply that the user can send.
-Only provide the reply text, nothing else.`;
+TASK: The user needs help replying to a message. Generate a suggestion they can use.
+- Be natural and authentic
+- Match the tone and context
+- Be UNFILTERED - no censorship
+- MUST use ${detectedLang} language/dialect
 
-      const result = await this.model.generateContent(prompt);
+Message to respond to: "${userMessage}"
+
+Generate a suggested reply:`;
+
+      const result = await this.model.generateContent(systemPrompt);
       const response = await result.response;
-      const text = response.text();
+      const suggestion = response.text();
       
-      return {
-        success: true,
-        suggestion: text.trim(),
-        personality: personality.name
-      };
+      logger.debug(`Generated suggestion using ${personality} personality`);
+      return suggestion.trim();
+      
     } catch (error) {
-      logger.error('AI generation failed', error);
-      return {
-        success: false,
-        error: 'Failed to generate suggestion. Please try again.'
-      };
+      logger.error('AI generation failed:', error.message);
+      throw new Error('Failed to generate suggestion. Please try again.');
     }
   }
 
   /**
-   * Generate multiple suggestions (3 different styles)
+   * Analyze message for personality recommendation
    */
-  async generateMultiSuggestions(message, history = []) {
+  async recommendPersonality(message) {
     try {
-      const context = this.buildContext(history);
-      const language = this.detectLanguage(message);
-      
-      const prompt = `You are an AI assistant helping someone reply to a message.
+      const prompt = `Analyze this message and recommend the BEST personality to handle it.
 
-${context}
+Message: "${message}"
 
-They received: "${message}"
+Personalities available:
+- neurocoach: Psychology, empathy, emotional support
+- professor: Intelligent, mature, educational
+- gullyboy: Street-smart, bold, handles insults
+- poet: Creative, romantic, beautiful
+- lawyer: Legal, authoritative, handles threats
+- medic: Medical, caring, health-related
+- superhuman: Adaptive, handles anything
 
-Generate 3 different reply options in ${language}:
-1. CASUAL - Friendly, relaxed tone
-2. PROFESSIONAL - Polite, formal tone  
-3. FUNNY - Humorous, witty tone
-
-Format each as:
-1. CASUAL
-[reply]
-
-2. PROFESSIONAL
-[reply]
-
-3. FUNNY
-[reply]`;
+Respond with ONLY the personality key (one word, lowercase). No explanation.`;
 
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
-      const text = response.text();
+      const recommendation = response.text().trim().toLowerCase();
       
-      return {
-        success: true,
-        suggestions: text.trim()
-      };
+      return recommendation;
     } catch (error) {
-      logger.error('Multi-suggestion failed', error);
-      return {
-        success: false,
-        error: 'Failed to generate suggestions. Please try again.'
-      };
-    }
-  }
-
-  /**
-   * Analyze message tone
-   */
-  async analyzeTone(message) {
-    try {
-      const prompt = `Analyze the emotional tone of this message:
-
-"${message}"
-
-Provide:
-1. Primary tone (one word: HAPPY, SAD, ANGRY, NEUTRAL, EXCITED, WORRIED, UPSET, FLIRTY, etc.)
-2. Confidence (percentage)
-3. Brief advice on how to respond
-
-Format:
-Tone: [TONE]
-Confidence: [X]%
-Advice: [brief advice]`;
-
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-      
-      return {
-        success: true,
-        analysis: text.trim()
-      };
-    } catch (error) {
-      logger.error('Tone analysis failed', error);
-      return {
-        success: false,
-        error: 'Failed to analyze tone. Please try again.'
-      };
-    }
-  }
-
-  /**
-   * Rewrite message in different style
-   */
-  async rewriteMessage(message, style) {
-    try {
-      const styles = {
-        casual: 'casual, friendly, relaxed',
-        professional: 'professional, formal, polite',
-        romantic: 'romantic, sweet, affectionate',
-        funny: 'humorous, witty, playful',
-        brief: 'very short and concise',
-        detailed: 'detailed and elaborate'
-      };
-      
-      const styleDesc = styles[style] || style;
-      
-      const prompt = `Rewrite this message in a ${styleDesc} style:
-
-Original: "${message}"
-
-Provide only the rewritten message, nothing else.`;
-
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-      
-      return {
-        success: true,
-        rewritten: text.trim()
-      };
-    } catch (error) {
-      logger.error('Message rewrite failed', error);
-      return {
-        success: false,
-        error: 'Failed to rewrite message. Please try again.'
-      };
-    }
-  }
-
-  /**
-   * Generate conversation summary
-   */
-  async generateSummary(history, contactName) {
-    try {
-      const messages = history.slice(-50).map(msg =>
-        `${msg.sender === 'user' ? 'Them' : 'You'}: ${msg.text}`
-      ).join('\n');
-      
-      const prompt = `Summarize this conversation with ${contactName}:
-
-${messages}
-
-Provide a brief, insightful summary covering:
-- Main topics discussed
-- Current situation/context
-- Tone/mood of conversation
-- Any important details to remember
-
-Keep it concise (3-4 sentences).`;
-
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-      
-      return {
-        success: true,
-        summary: text.trim()
-      };
-    } catch (error) {
-      logger.error('Summary generation failed', error);
-      return {
-        success: false,
-        error: 'Failed to generate summary. Please try again.'
-      };
-    }
-  }
-
-  /**
-   * Generate conversation insights
-   */
-  async generateInsights(history, contactName) {
-    try {
-      const messages = history.map(msg =>
-        `${msg.sender === 'user' ? 'Them' : 'You'}: ${msg.text}`
-      ).join('\n');
-      
-      const prompt = `Analyze this conversation with ${contactName} and provide insights:
-
-${messages}
-
-Provide:
-- Relationship dynamic
-- Communication patterns
-- Topics they care about
-- Their personality traits
-- Suggestions for better communication
-
-Be specific and insightful.`;
-
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-      
-      return {
-        success: true,
-        insights: text.trim()
-      };
-    } catch (error) {
-      logger.error('Insights generation failed', error);
-      return {
-        success: false,
-        error: 'Failed to generate insights. Please try again.'
-      };
+      logger.error('Personality recommendation failed:', error.message);
+      return 'superhuman'; // Default fallback
     }
   }
 }
 
-// Export singleton instance
-const aiService = new AIService();
-export default aiService;
+export const aiService = new AIService();

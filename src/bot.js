@@ -156,12 +156,31 @@ class WingmanBot {
         });
         
         console.error(`\n❌ Connection failed with unrecognized error code: ${statusCode}`);
-        console.error('💡 This usually indicates an authentication or session problem.\n');
-        console.error('📋 Troubleshooting steps:');
-        console.error('   1. Delete the "auth_info_baileys" folder');
-        console.error('   2. Restart the bot with: npm start');
-        console.error('   3. Scan the QR code again with WhatsApp');
-        console.error('   4. If issue persists, check your internet connection\n');
+        
+        // Provide specific guidance for 405 errors
+        if (statusCode === 405) {
+          console.error('💡 Error 405 (Method Not Allowed) - This usually means:\n');
+          console.error('   ⚠️  MULTIPLE WHATSAPP SESSIONS DETECTED');
+          console.error('   • Another WhatsApp Web/bot is already connected with this number');
+          console.error('   • WhatsApp only allows 1 bot session per number at a time');
+          console.error('   • Check if you have whatsapp-web.js or another bot running\n');
+          console.error('📋 To fix this:');
+          console.error('   1. STOP all other WhatsApp bots using this number');
+          console.error('   2. Open WhatsApp on your phone');
+          console.error('   3. Go to: Settings → Linked Devices');
+          console.error('   4. Log out ALL linked devices');
+          console.error('   5. Delete the "auth_info_baileys" folder here');
+          console.error('   6. Restart this bot with: npm start');
+          console.error('   7. Scan the QR code again\n');
+        } else {
+          console.error('💡 This usually indicates an authentication or session problem.\n');
+          console.error('📋 Troubleshooting steps:');
+          console.error('   1. Delete the "auth_info_baileys" folder');
+          console.error('   2. Restart the bot with: npm start');
+          console.error('   3. Scan the QR code again with WhatsApp');
+          console.error('   4. If issue persists, check your internet connection\n');
+        }
+        
         console.error('⚠️  Bot will not attempt to reconnect for unrecognized errors.\n');
         
         // Don't attempt to reconnect for unknown errors

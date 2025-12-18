@@ -161,25 +161,33 @@ class WingmanBot {
         // In WhatsApp/Baileys context, 405 typically indicates multiple active sessions
         // WhatsApp's servers reject the connection when another session is already active
         if (statusCode === 405) {
-          console.error('💡 Error 405 (Method Not Allowed) - This usually means:\n');
-          console.error('   ⚠️  MULTIPLE WHATSAPP SESSIONS DETECTED');
+          console.error('💡 Error 405 (Method Not Allowed) - Two possible causes:\n');
+          console.error('   ⚠️  CAUSE 1: CORRUPTED AUTH SESSION (most likely if NO QR code shown)');
+          console.error('   • The auth_info_baileys folder contains an invalid/corrupted session');
+          console.error('   • Bot tries to connect with this bad session and fails immediately');
+          console.error('   • No QR code appears because bot thinks it has valid credentials\n');
+          console.error('   ⚠️  CAUSE 2: MULTIPLE ACTIVE SESSIONS (if QR code WAS shown)');
           console.error('   • Another WhatsApp Web/bot is already connected with this number');
-          console.error('   • WhatsApp only allows 1 bot session per number at a time');
-          console.error('   • Check if you have whatsapp-web.js or another bot running\n');
-          console.error('📋 CRITICAL: Follow these steps IN ORDER:\n');
-          console.error('   1. STOP all other WhatsApp bots using this number (if running)');
-          console.error('   2. Open WhatsApp on your phone → Settings → Linked Devices');
-          console.error('   3. Carefully check and LOG OUT ALL linked devices (computers, tablets, etc.)');
-          console.error('   4. WAIT 30 seconds for WhatsApp servers to recognize the logout');
-          console.error('   5. Delete auth folder:');
+          console.error('   • WhatsApp only allows 1 bot session per number at a time\n');
+          console.error('📋 SOLUTION - Follow these steps IN ORDER:\n');
+          console.error('   1. STOP this bot (if running)');
+          console.error('   2. STOP all other WhatsApp bots using this number');
+          console.error('   3. Open WhatsApp on phone → Settings → Linked Devices');
+          console.error('   4. LOG OUT ALL linked devices (computers, tablets, etc.)');
+          console.error('   5. WAIT 30-60 seconds for WhatsApp servers to sync');
+          console.error('   6. Delete auth folder (THIS IS CRITICAL):');
           console.error('      Linux/Mac: rm -rf auth_info_baileys');
           console.error('      Windows: rmdir /s /q auth_info_baileys');
-          console.error('   6. Verify folder is deleted (should show nothing):');
+          console.error('   7. Verify deletion (should show NOTHING):');
           console.error('      Linux/Mac: ls -la | grep auth_info_baileys');
           console.error('      Windows: dir | findstr auth_info_baileys');
-          console.error('   7. Restart this bot: npm start');
-          console.error('   8. Scan the NEW QR code with WhatsApp\n');
-          console.error('💡 STILL NOT WORKING? The session may be stuck on WhatsApp servers:');
+          console.error('   8. WAIT another 30 seconds');
+          console.error('   9. START bot: npm start');
+          console.error('   10. SCAN the QR code (it MUST appear now)\n');
+          console.error('💡 IMPORTANT: If you do NOT see a QR code after step 9, the auth folder');
+          console.error('   was not properly deleted. Go back to step 6 and delete it manually.\n');
+          console.error('💡 STILL NOT WORKING after following ALL steps?');
+          console.error('   • The session may be stuck on WhatsApp servers');
           console.error('   • Wait 5-10 minutes before trying again');
           console.error('   • Or try using a DIFFERENT phone number for this bot\n');
         } else {

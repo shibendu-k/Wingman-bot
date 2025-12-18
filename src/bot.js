@@ -20,6 +20,10 @@ class WingmanBot {
   constructor() {
     this.sock = null;
     this.isReady = false;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 10;
+    this.isReconnecting = false;
+    this.reconnectTimeout = null;
   }
 
   /**
@@ -56,6 +60,57 @@ class WingmanBot {
   }
 
   /**
+   * Reconnect to WhatsApp
+   */
+  async reconnect() {
+    if (this.isReconnecting) {
+      logger.info('Reconnection already in progress, skipping...');
+      return;
+    }
+
+    this.isReconnecting = true;
+
+    try {
+      // Clean up old socket if it exists
+      if (this.sock) {
+        try {
+          // Remove all event listeners to prevent memory leaks
+          this.sock.ev.removeAllListeners('connection.update');
+          this.sock.ev.removeAllListeners('messages.upsert');
+          this.sock.ev.removeAllListeners('creds.update');
+          
+          // Close the socket if possible
+          if (typeof this.sock.end === 'function') {
+            await this.sock.end();
+          }
+        } catch (cleanupError) {
+          logger.error('Error during socket cleanup', cleanupError);
+        }
+        
+        this.sock = null;
+      }
+
+      this.isReady = false;
+
+      // Wait a bit before creating new connection
+      await delay(1000);
+
+      // Start new connection
+      await this.start();
+    } catch (error) {
+      logger.error('Reconnection failed', error);
+      this.isReconnecting = false;
+      
+      // If reconnection fails, schedule another attempt
+      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        const backoffDelay = Math.min(3000 * Math.pow(2, this.reconnectAttempts), 60000);
+        logger.info('Scheduling retry after failed reconnection', { delayMs: backoffDelay });
+        this.reconnectTimeout = setTimeout(() => this.reconnect(), backoffDelay);
+      }
+    }
+  }
+
+  /**
    * Handle connection updates
    */
   handleConnection(update) {
@@ -67,18 +122,51 @@ class WingmanBot {
     }
 
     if (connection === 'close') {
-      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+      const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
       
       logger.info('Connection closed', { 
         shouldReconnect,
-        reason: lastDisconnect?.error?.output?.statusCode
+        reason: statusCode,
+        reconnectAttempts: this.reconnectAttempts
       });
 
-      if (shouldReconnect) {
-        setTimeout(() => this.start(), 3000);
+      // Clean up existing reconnect timeout
+      if (this.reconnectTimeout) {
+        clearTimeout(this.reconnectTimeout);
+        this.reconnectTimeout = null;
+      }
+
+      if (shouldReconnect && !this.isReconnecting) {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+          logger.error('Max reconnection attempts reached. Please restart the bot manually.');
+          console.error('\n❌ Max reconnection attempts reached.');
+          console.error('💡 Please check your internet connection or WhatsApp authentication.');
+          console.error('💡 If the issue persists, delete auth_info_baileys folder and scan QR again.\n');
+          return;
+        }
+
+        this.reconnectAttempts++;
+        
+        // Exponential backoff: 3s, 6s, 12s, 24s, 48s, then cap at 60s
+        const backoffDelay = Math.min(3000 * Math.pow(2, this.reconnectAttempts - 1), 60000);
+        
+        logger.info('Scheduling reconnection', {
+          attempt: this.reconnectAttempts,
+          maxAttempts: this.maxReconnectAttempts,
+          delayMs: backoffDelay
+        });
+
+        console.log(`\n⏳ Reconnecting in ${backoffDelay / 1000} seconds... (Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+
+        this.reconnectTimeout = setTimeout(() => this.reconnect(), backoffDelay);
+      } else if (statusCode === DisconnectReason.loggedOut) {
+        console.log('\n🔓 Logged out from WhatsApp. Please restart the bot and scan QR code again.\n');
       }
     } else if (connection === 'open') {
       this.isReady = true;
+      this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+      this.isReconnecting = false;
       
       // Initialize presence manager
       presenceManager.init(this.sock);

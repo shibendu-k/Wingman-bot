@@ -166,14 +166,18 @@ class WingmanBot {
           console.error('   • Another WhatsApp Web/bot is already connected with this number');
           console.error('   • WhatsApp only allows 1 bot session per number at a time');
           console.error('   • Check if you have whatsapp-web.js or another bot running\n');
-          console.error('📋 To fix this:');
-          console.error('   1. STOP all other WhatsApp bots using this number');
-          console.error('   2. Open WhatsApp on your phone');
-          console.error('   3. Go to: Settings → Linked Devices');
-          console.error('   4. Log out ALL linked devices');
-          console.error('   5. Delete the "auth_info_baileys" folder here');
-          console.error('   6. Restart this bot with: npm start');
-          console.error('   7. Scan the QR code again\n');
+          console.error('📋 CRITICAL: Follow these steps IN ORDER:\n');
+          console.error('   1. STOP all other WhatsApp bots using this number (if running)');
+          console.error('   2. Open WhatsApp on your phone → Settings → Linked Devices');
+          console.error('   3. Carefully check and LOG OUT ALL linked devices (computers, tablets, etc.)');
+          console.error('   4. WAIT 30 seconds for WhatsApp servers to recognize the logout');
+          console.error('   5. On this machine, run: rm -rf auth_info_baileys');
+          console.error('   6. Verify folder is deleted: ls -la | grep auth_info_baileys (should show nothing)');
+          console.error('   7. Restart this bot: npm start');
+          console.error('   8. Scan the NEW QR code with WhatsApp\n');
+          console.error('💡 STILL NOT WORKING? The session may be stuck on WhatsApp servers:');
+          console.error('   • Wait 5-10 minutes before trying again');
+          console.error('   • Or try using a DIFFERENT phone number for this bot\n');
         } else {
           console.error('💡 This usually indicates an authentication or session problem.\n');
           console.error('📋 Troubleshooting steps:');

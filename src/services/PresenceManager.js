@@ -1,5 +1,5 @@
 import { logger } from '../utils/logger.js';
-import { config } from '../config.js';
+import config from '../config.js';
 
 /**
  * Presence Manager - Handles online status, sleep mode, and ghost reading
@@ -269,4 +269,5 @@ class PresenceManager {
   }
 }
 
-export const presenceManager = new PresenceManager();
+const presenceManager = new PresenceManager();
+export default presenceManager;

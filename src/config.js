@@ -16,6 +16,11 @@ const config = {
   
   // API Keys
   geminiApiKey: process.env.GEMINI_API_KEY || '',
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+  
+  // Presence & Sleep Mode settings
+  sleepMode: process.env.SLEEP_MODE !== 'false', // Enabled by default
+  inactivityTimeout: parseInt(process.env.INACTIVITY_TIMEOUT || '900000'), // 15 minutes in ms
   
   // Security settings
   maxActiveMessages: parseInt(process.env.MAX_ACTIVE_MESSAGES || '100'),

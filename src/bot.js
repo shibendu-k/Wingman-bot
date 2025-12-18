@@ -11,7 +11,7 @@ import aiService from './services/aiService.js';
 import stateManager from './services/stateManager.js';
 import advancedFeatures from './services/advancedFeatures.js';
 import presenceManager from './services/PresenceManager.js';
-import { getPersonalityList } from './services/personalities.js';
+import { getAllPersonalities } from './services/personalities.js';
 
 /**
  * Wingman Bot - Main bot logic
@@ -409,7 +409,8 @@ class WingmanBot {
    * Handle personality command
    */
   async handlePersonality(sender) {
-    const list = getPersonalityList();
+    const personalities = getAllPersonalities();
+    const list = personalities.map(p => `• *${p.name}* (${p.key})\n  ${p.description}`).join('\n\n');
     await this.reply(sender, `🎭 **Available Personalities:**\n\n${list}\n\nUse !profile <contact> <personality> to set.`);
   }
 

@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { config } from '../config.js';
+import config from '../config.js';
 import { logger } from '../utils/logger.js';
 import { getPersonalityPrompt } from './personalities.js';
 
@@ -161,4 +161,6 @@ Respond with ONLY the personality key (one word, lowercase). No explanation.`;
   }
 }
 
-export const aiService = new AIService();
+// Export singleton instance
+const aiService = new AIService();
+export default aiService;

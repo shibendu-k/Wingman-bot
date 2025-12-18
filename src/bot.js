@@ -158,6 +158,8 @@ class WingmanBot {
         console.error(`\n❌ Connection failed with unrecognized error code: ${statusCode}`);
         
         // Provide specific guidance for 405 errors
+        // In WhatsApp/Baileys context, 405 typically indicates multiple active sessions
+        // WhatsApp's servers reject the connection when another session is already active
         if (statusCode === 405) {
           console.error('💡 Error 405 (Method Not Allowed) - This usually means:\n');
           console.error('   ⚠️  MULTIPLE WHATSAPP SESSIONS DETECTED');

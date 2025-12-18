@@ -96,16 +96,27 @@ A production-ready, military-grade encrypted WhatsApp bot that helps you craft p
 - 🎭 Natural behavior patterns
 
 ### ⏱️ **Typing Simulation**
-- **Random Delays**: 1-3 seconds before messages
-- **"Typing..." Indicator**: Shows to recipient
-- **Human-Like**: Varies timing each time
-- **Believable**: Makes replies look natural
+- **Available but Disabled by Default**: No delays for quick responses
+- **Optional Feature**: Can be enabled when needed
+- **"Typing..." Indicator**: Shows when enabled
+- **Fast Suggestions**: Instant replies for important conversations
 
-**Why This Matters:**
-- 🤖 Instant replies look like bots
-- ⏱️ Humans take time to type
-- 💯 100% believable conversations
-- 🎭 Natural feel to all replies
+**Why Disabled by Default:**
+- ⚡ Quick suggestions when you need them fast
+- 🎯 No delay in important conversations
+- 💬 Instant responses keep conversation flow
+- 🔧 Can still be enabled if human-like timing needed
+
+### 🔐 **Privacy Protection**
+- **Masked Contact IDs**: Never shows full phone numbers
+- **Safe ID Display**: Only last 3 digits visible
+- **Group ID Masking**: Partial masking for groups
+- **Privacy First**: No accidental number exposure
+
+**Getting Masked IDs:**
+- 📇 Use `!getid` command to see your masked chat ID
+- 🔒 Safe to share - full numbers never exposed
+- ✅ Add to ALLOWED_GROUPS in .env safely
 
 ---
 
@@ -144,6 +155,16 @@ Send via WhatsApp:
 !unlock YourStrongPassword123
 ```
 
+### **5. Get Your Chat ID (Optional)**
+To add specific chats to allowed list:
+```
+!getid
+```
+Copy the masked ID and add to `.env`:
+```env
+ALLOWED_GROUPS=XXX...210@s.whatsapp.net,120363...123@g.us
+```
+
 ---
 
 ## 📱 Command Reference
@@ -180,6 +201,7 @@ Send via WhatsApp:
 !status                      Show bot status (sleep, ghost mode, etc.)
 !sleep                       Manually put bot to sleep (appear offline)
 !wake                        Manually wake up bot
+!getid                       Get masked chat ID for allowed list
 ```
 
 ### **📊 Analysis & Insights**
@@ -342,6 +364,33 @@ Bot: 😴 Bot going to sleep...
 
 # Bot automatically sleeps after 15 minutes of inactivity
 # This makes it look more human and helps avoid WhatsApp bans!
+```
+
+### **Example 9: Get Masked Chat ID** 🔐
+```
+# Get your masked chat ID for privacy-safe configuration
+You: !getid
+
+Bot: 📇 Your Chat ID (Masked for Privacy)
+     
+     🔒 Masked ID: XXX...210@s.whatsapp.net
+     
+     💡 How to use this:
+     1. Copy the masked ID above
+     2. Add it to ALLOWED_GROUPS in .env file
+     3. Bot will work in this chat
+     
+     ⚠️ Privacy Note:
+     - Full contact numbers are NEVER shown
+     - Only last 3 digits visible for contacts
+     - Group IDs are partially masked
+     - This prevents privacy leaks
+     
+     📝 For .env file:
+     ALLOWED_GROUPS=XXX...210@s.whatsapp.net
+
+# Perfect for adding multiple allowed chats safely!
+# No risk of exposing full phone numbers
 ```
 
 ---

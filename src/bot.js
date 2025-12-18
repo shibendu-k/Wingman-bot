@@ -249,6 +249,9 @@ class WingmanBot {
       case 'wake':
         await this.handleWake(sender);
         break;
+      case 'getid':
+        await this.handleGetId(sender);
+        break;
       default:
         await this.reply(sender, '❓ Unknown command. Use !help to see all commands.');
     }
@@ -323,6 +326,7 @@ class WingmanBot {
 !status - Show bot status (sleep, ghost mode, etc.)
 !sleep - Manually put bot to sleep (appear offline)
 !wake - Manually wake up bot
+!getid - Get masked chat ID for allowed list
 
 📊 **Analysis:**
 !summary <contact> - AI conversation summary
@@ -805,6 +809,66 @@ Pending Messages: ${status.pendingGhostMessages} chat(s)
   }
 
   /**
+   * Mask JID for privacy (shows only last 3 digits)
+   */
+  maskJid(jid) {
+    if (!jid) return 'Unknown';
+    
+    // Extract the phone number part before @
+    const parts = jid.split('@');
+    if (parts.length < 2) return jid;
+    
+    const number = parts[0];
+    const domain = parts[1];
+    
+    // For groups, keep the full group ID but mask differently
+    if (domain === 'g.us') {
+      // Group IDs are like "120363XXXXXXXXXX@g.us"
+      const groupPrefix = number.substring(0, 6);
+      const groupSuffix = number.substring(number.length - 3);
+      return `${groupPrefix}...${groupSuffix}@${domain}`;
+    }
+    
+    // For regular contacts, show only last 3 digits
+    if (number.length > 3) {
+      const lastThree = number.substring(number.length - 3);
+      return `XXX...${lastThree}@${domain}`;
+    }
+    
+    return jid;
+  }
+
+  /**
+   * Handle getid command - Show masked contact/group ID
+   */
+  async handleGetId(sender) {
+    const maskedId = this.maskJid(sender);
+    
+    const message = `📇 **Your Chat ID (Masked for Privacy)**
+
+🔒 Masked ID: ${maskedId}
+
+💡 **How to use this:**
+1. Copy the masked ID above
+2. Add it to ALLOWED_GROUPS in .env file
+3. Bot will work in this chat
+
+⚠️ **Privacy Note:**
+- Full contact numbers are NEVER shown
+- Only last 3 digits visible for contacts
+- Group IDs are partially masked
+- This prevents privacy leaks
+
+📝 **For .env file:**
+ALLOWED_GROUPS=${maskedId}
+
+💡 To allow multiple chats, separate with commas:
+ALLOWED_GROUPS=${maskedId},XXX...456@s.whatsapp.net`;
+
+    await this.reply(sender, message);
+  }
+
+  /**
    * Handle state-based flows
    */
   async handleStateFlow(sender, text) {
@@ -906,9 +970,9 @@ Pending Messages: ${status.pendingGhostMessages} chat(s)
   /**
    * Send reply to user
    */
-  async reply(jid, text, simulateTyping = true) {
+  async reply(jid, text, simulateTyping = false) {
     try {
-      // Simulate typing for human-like behavior
+      // Simulate typing for human-like behavior (disabled by default for quick responses)
       if (simulateTyping) {
         await presenceManager.simulateTyping(jid);
       }

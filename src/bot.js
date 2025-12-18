@@ -28,6 +28,9 @@ class WingmanBot {
     // Reconnection delay constants (in milliseconds)
     this.initialReconnectDelay = 3000;  // 3 seconds
     this.maxReconnectDelay = 60000;     // 60 seconds (1 minute)
+    
+    // Cache known disconnect reasons for efficiency
+    this.knownDisconnectReasons = Object.values(DisconnectReason);
   }
 
   /**
@@ -132,8 +135,7 @@ class WingmanBot {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       
       // Check if this is a recognized disconnect reason
-      const knownReasons = Object.values(DisconnectReason);
-      const isKnownReason = knownReasons.includes(statusCode);
+      const isKnownReason = this.knownDisconnectReasons.includes(statusCode);
       
       // Handle specific disconnect reasons
       if (statusCode === DisconnectReason.loggedOut) {
@@ -163,7 +165,8 @@ class WingmanBot {
         return;
       }
       
-      // For known disconnect reasons (except loggedOut), attempt reconnection
+      // For known disconnect reasons (already handled loggedOut above), attempt reconnection
+      // At this point we only have known, recoverable disconnect reasons
       const shouldReconnect = true;
       
       logger.info('Connection closed', { 

@@ -10,6 +10,7 @@ import storageManager from './services/storage.js';
 import aiService from './services/aiService.js';
 import stateManager from './services/stateManager.js';
 import advancedFeatures from './services/advancedFeatures.js';
+import presenceManager from './services/PresenceManager.js';
 import { getPersonalityList } from './services/personalities.js';
 
 /**
@@ -78,6 +79,10 @@ class WingmanBot {
       }
     } else if (connection === 'open') {
       this.isReady = true;
+      
+      // Initialize presence manager
+      presenceManager.init(this.sock);
+      
       logger.info('✅ Connected to WhatsApp!');
       console.log('\n🎉 Wingman Bot is ready!');
       console.log('🔒 System is LOCKED. Send !unlock <password> to start using the bot.\n');
@@ -111,6 +116,9 @@ class WingmanBot {
         await this.reply(sender, `⏱️ Rate limit exceeded. Try again in ${rateLimit.retryAfter} seconds.`);
         return;
       }
+
+      // Update presence activity
+      presenceManager.updateActivity();
 
       // Process command
       await this.processMessage(sender, text, message);
@@ -226,6 +234,24 @@ class WingmanBot {
       case 'unban':
         await this.handleUnban(sender, args[0]);
         break;
+      case 'ghost':
+        await this.handleGhost(sender, args);
+        break;
+      case 'readnow':
+        await this.handleReadNow(sender);
+        break;
+      case 'status':
+        await this.handleStatus(sender);
+        break;
+      case 'sleep':
+        await this.handleSleep(sender);
+        break;
+      case 'wake':
+        await this.handleWake(sender);
+        break;
+      case 'getid':
+        await this.handleGetId(sender);
+        break;
       default:
         await this.reply(sender, '❓ Unknown command. Use !help to see all commands.');
     }
@@ -291,6 +317,16 @@ class WingmanBot {
 !quick <trigger> <response> - Save quick reply
 !quick - List all quick replies
 !quick delete <trigger> - Delete quick reply
+
+👻 **Ghost Mode & Presence:**
+!ghost <contact> - Enable ghost read for contact
+!ghost off <contact> - Disable ghost read
+!ghost - List all ghost contacts
+!readnow - Mark ghost messages as read (send blue ticks)
+!status - Show bot status (sleep, ghost mode, etc.)
+!sleep - Manually put bot to sleep (appear offline)
+!wake - Manually wake up bot
+!getid - Get masked chat ID for allowed list
 
 📊 **Analysis:**
 !summary <contact> - AI conversation summary
@@ -673,6 +709,166 @@ class WingmanBot {
   }
 
   /**
+   * Handle ghost read commands
+   */
+  async handleGhost(sender, args) {
+    if (args.length === 0) {
+      // List all ghost contacts
+      const contacts = presenceManager.getGhostReadContacts();
+      if (contacts.length === 0) {
+        await this.reply(sender, '👻 **Ghost Read Mode**\n\nNo contacts in ghost mode.\n\nUse !ghost <contact_name> to enable ghost reading for a contact.');
+        return;
+      }
+      
+      const list = contacts.map((c, i) => `${i + 1}. ${c}`).join('\n');
+      await this.reply(sender, `👻 **Ghost Read Contacts:**\n\n${list}\n\n💡 Messages from these contacts won't show blue ticks until you use !readnow`);
+      return;
+    }
+
+    if (args[0].toLowerCase() === 'off' && args.length > 1) {
+      // Disable ghost read
+      const contactName = args.slice(1).join(' ');
+      presenceManager.disableGhostRead(contactName);
+      await this.reply(sender, `👁️ **Ghost read disabled for:** ${contactName}\n\nBlue ticks will be sent normally now.`);
+      return;
+    }
+
+    // Enable ghost read
+    const contactName = args.join(' ');
+    presenceManager.enableGhostRead(contactName);
+    await this.reply(sender, `👻 **Ghost read enabled for:** ${contactName}\n\n✅ Messages will be stored without blue ticks\n💡 Use !readnow when ready to send blue ticks`);
+  }
+
+  /**
+   * Handle readnow command
+   */
+  async handleReadNow(sender) {
+    const contacts = presenceManager.getGhostReadContacts();
+    
+    if (contacts.length === 0) {
+      await this.reply(sender, '❌ No ghost read contacts configured.\n\nUse !ghost <contact_name> to enable ghost reading.');
+      return;
+    }
+
+    // Get all pending messages count using public method
+    const stats = presenceManager.getPendingMessageStats();
+    
+    if (stats.totalMessages === 0) {
+      await this.reply(sender, '📭 No pending ghost messages to mark as read.');
+      return;
+    }
+
+    // Mark all pending messages as read
+    let markedCount = 0;
+    const allMessages = presenceManager.getAllPendingMessages();
+    for (const [chatId] of allMessages) {
+      const count = await presenceManager.markGhostMessagesAsRead(chatId);
+      markedCount += count;
+    }
+
+    await this.reply(sender, `✅ **Marked ${markedCount} message(s) as read**\n\n💙 Blue ticks sent!`);
+  }
+
+  /**
+   * Handle status command
+   */
+  async handleStatus(sender) {
+    const status = presenceManager.getStatus();
+    
+    const statusText = `🤖 **Bot Status Report**
+
+🔐 System: ${cryptoManager.isUnlocked() ? '🔓 UNLOCKED' : '🔒 LOCKED'}
+💤 Sleep Mode: ${status.sleepModeEnabled ? 'Enabled' : 'Disabled'}
+😴 Currently: ${status.isAsleep ? 'Asleep (Offline)' : 'Awake (Online)'}
+⏱️ Last Activity: ${status.timeSinceActivity}
+📊 Presence: ${status.currentPresence}
+
+👻 **Ghost Read Status:**
+Active Contacts: ${status.ghostReadContacts.length}
+Pending Messages: ${status.pendingGhostMessages} chat(s)
+
+💡 Ghost contacts: ${status.ghostReadContacts.length > 0 ? status.ghostReadContacts.join(', ') : 'None'}`;
+
+    await this.reply(sender, statusText);
+  }
+
+  /**
+   * Handle sleep command
+   */
+  async handleSleep(sender) {
+    await presenceManager.goToSleep();
+    await this.reply(sender, '😴 **Bot going to sleep...**\n\n✅ Appearing offline now\n💡 Bot will wake up automatically when you send a command');
+  }
+
+  /**
+   * Handle wake command
+   */
+  async handleWake(sender) {
+    await presenceManager.wakeUp();
+    await this.reply(sender, '👁️ **Bot waking up...**\n\n✅ Appearing online now\n💡 Bot will auto-sleep after 15 minutes of inactivity');
+  }
+
+  /**
+   * Mask JID for privacy (shows only last 3 digits)
+   */
+  maskJid(jid) {
+    if (!jid) return 'Unknown';
+    
+    // Extract the phone number part before @
+    const parts = jid.split('@');
+    if (parts.length < 2) return jid;
+    
+    const number = parts[0];
+    const domain = parts[1];
+    
+    // For groups, keep the full group ID but mask differently
+    if (domain === 'g.us') {
+      // Group IDs are like "120363XXXXXXXXXX@g.us"
+      const groupPrefix = number.substring(0, 6);
+      const groupSuffix = number.substring(number.length - 3);
+      return `${groupPrefix}...${groupSuffix}@${domain}`;
+    }
+    
+    // For regular contacts, show only last 3 digits
+    if (number.length > 3) {
+      const lastThree = number.substring(number.length - 3);
+      return `XXX...${lastThree}@${domain}`;
+    }
+    
+    return jid;
+  }
+
+  /**
+   * Handle getid command - Show masked contact/group ID
+   */
+  async handleGetId(sender) {
+    const maskedId = this.maskJid(sender);
+    
+    const message = `📇 **Your Chat ID (Masked for Privacy)**
+
+🔒 Masked ID: ${maskedId}
+
+💡 **How to use this:**
+1. Copy the masked ID above
+2. Add it to ALLOWED_GROUPS in .env file
+3. Bot will work in this chat
+
+⚠️ **Privacy Note:**
+- Full contact numbers are NEVER shown
+- Only last 3 digits visible for contacts
+- Group IDs are partially masked
+- This prevents privacy leaks
+
+📝 **For .env file:**
+ALLOWED_GROUPS=${maskedId}
+
+💡 To allow multiple chats, separate with commas:
+ALLOWED_GROUPS=${maskedId},XXX...456@s.whatsapp.net`;
+
+    await this.reply(sender, message);
+  }
+
+  /**
    * Handle state-based flows
    */
   async handleStateFlow(sender, text) {
@@ -774,8 +970,13 @@ class WingmanBot {
   /**
    * Send reply to user
    */
-  async reply(jid, text) {
+  async reply(jid, text, simulateTyping = false) {
     try {
+      // Simulate typing for human-like behavior (disabled by default for quick responses)
+      if (simulateTyping) {
+        await presenceManager.simulateTyping(jid);
+      }
+      
       await this.sock.sendMessage(jid, { text });
     } catch (error) {
       logger.error('Failed to send message', error);

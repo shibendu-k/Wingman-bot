@@ -1,5 +1,5 @@
 import { logger } from '../utils/logger.js';
-import { config } from '../config.js';
+import config from '../config.js';
 
 /**
  * Presence Manager - Handles online status, sleep mode, and ghost reading
@@ -245,6 +245,34 @@ class PresenceManager {
   }
 
   /**
+   * Get pending messages statistics
+   */
+  getPendingMessageStats() {
+    const stats = {
+      totalChats: this.pendingMessages.size,
+      totalMessages: 0,
+      chats: []
+    };
+
+    for (const [chatId, messages] of this.pendingMessages.entries()) {
+      stats.totalMessages += messages.length;
+      stats.chats.push({
+        chatId,
+        count: messages.length
+      });
+    }
+
+    return stats;
+  }
+
+  /**
+   * Get all pending messages (for iteration)
+   */
+  getAllPendingMessages() {
+    return Array.from(this.pendingMessages.entries());
+  }
+
+  /**
    * Get status report
    */
   getStatus() {
@@ -269,4 +297,5 @@ class PresenceManager {
   }
 }
 
-export const presenceManager = new PresenceManager();
+const presenceManager = new PresenceManager();
+export default presenceManager;

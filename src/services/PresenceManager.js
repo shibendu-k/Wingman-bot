@@ -245,6 +245,34 @@ class PresenceManager {
   }
 
   /**
+   * Get pending messages statistics
+   */
+  getPendingMessageStats() {
+    const stats = {
+      totalChats: this.pendingMessages.size,
+      totalMessages: 0,
+      chats: []
+    };
+
+    for (const [chatId, messages] of this.pendingMessages.entries()) {
+      stats.totalMessages += messages.length;
+      stats.chats.push({
+        chatId,
+        count: messages.length
+      });
+    }
+
+    return stats;
+  }
+
+  /**
+   * Get all pending messages (for iteration)
+   */
+  getAllPendingMessages() {
+    return Array.from(this.pendingMessages.entries());
+  }
+
+  /**
    * Get status report
    */
   getStatus() {

@@ -746,20 +746,18 @@ class WingmanBot {
       return;
     }
 
-    // Get all pending messages count
-    let totalPending = 0;
-    for (const [chatId, messages] of presenceManager.pendingMessages.entries()) {
-      totalPending += messages.length;
-    }
-
-    if (totalPending === 0) {
+    // Get all pending messages count using public method
+    const stats = presenceManager.getPendingMessageStats();
+    
+    if (stats.totalMessages === 0) {
       await this.reply(sender, '📭 No pending ghost messages to mark as read.');
       return;
     }
 
     // Mark all pending messages as read
     let markedCount = 0;
-    for (const [chatId] of presenceManager.pendingMessages.entries()) {
+    const allMessages = presenceManager.getAllPendingMessages();
+    for (const [chatId] of allMessages) {
       const count = await presenceManager.markGhostMessagesAsRead(chatId);
       markedCount += count;
     }

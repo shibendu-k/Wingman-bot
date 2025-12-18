@@ -137,3 +137,10 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Wingman Bot specific
+.env
+auth_info_baileys/
+data/
+backups/
+logs/

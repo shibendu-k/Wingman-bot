@@ -167,10 +167,7 @@ class WingmanBot {
       
       // For known disconnect reasons (already handled loggedOut above), attempt reconnection
       // At this point we only have known, recoverable disconnect reasons
-      const shouldReconnect = true;
-      
-      logger.info('Connection closed', { 
-        shouldReconnect,
+      logger.info('Connection closed - attempting reconnection', { 
         reason: statusCode,
         reconnectAttempts: this.reconnectAttempts
       });
@@ -181,7 +178,8 @@ class WingmanBot {
         this.reconnectTimeout = null;
       }
 
-      if (shouldReconnect && !this.isReconnecting) {
+      // Proceed with reconnection if not already reconnecting
+      if (!this.isReconnecting) {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
           logger.error('Max reconnection attempts reached. Please restart the bot manually.');
           console.error('\n❌ Max reconnection attempts reached.');

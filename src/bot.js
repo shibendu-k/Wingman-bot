@@ -24,6 +24,10 @@ class WingmanBot {
     this.maxReconnectAttempts = 10;
     this.isReconnecting = false;
     this.reconnectTimeout = null;
+    
+    // Reconnection delay constants (in milliseconds)
+    this.initialReconnectDelay = 3000;  // 3 seconds
+    this.maxReconnectDelay = 60000;     // 60 seconds (1 minute)
   }
 
   /**
@@ -75,13 +79,15 @@ class WingmanBot {
       if (this.sock) {
         try {
           // Remove all event listeners to prevent memory leaks
-          this.sock.ev.removeAllListeners('connection.update');
-          this.sock.ev.removeAllListeners('messages.upsert');
-          this.sock.ev.removeAllListeners('creds.update');
+          this.sock.ev.removeAllListeners();
           
           // Close the socket if possible
           if (typeof this.sock.end === 'function') {
-            await this.sock.end();
+            try {
+              await this.sock.end();
+            } catch (endError) {
+              logger.error('Failed to close socket connection', endError);
+            }
           }
         } catch (cleanupError) {
           logger.error('Error during socket cleanup', cleanupError);
@@ -149,8 +155,11 @@ class WingmanBot {
 
         this.reconnectAttempts++;
         
-        // Exponential backoff: 3s, 6s, 12s, 24s, 48s, then cap at 60s
-        const backoffDelay = Math.min(3000 * Math.pow(2, this.reconnectAttempts - 1), 60000);
+        // Exponential backoff: starts at initialReconnectDelay (3s) and doubles each attempt, capped at maxReconnectDelay (60s)
+        const backoffDelay = Math.min(
+          this.initialReconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 
+          this.maxReconnectDelay
+        );
         
         logger.info('Scheduling reconnection', {
           attempt: this.reconnectAttempts,

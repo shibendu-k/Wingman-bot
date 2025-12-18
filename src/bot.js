@@ -134,17 +134,18 @@ class WingmanBot {
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       
-      // Check if this is a recognized disconnect reason
-      const isKnownReason = this.knownDisconnectReasons.includes(statusCode);
-      
-      // Handle specific disconnect reasons
+      // Handle logged out status (no reconnection)
       if (statusCode === DisconnectReason.loggedOut) {
         logger.info('Logged out from WhatsApp', { reason: statusCode });
         console.log('\n🔓 Logged out from WhatsApp. Please restart the bot and scan QR code again.\n');
         return;
       }
       
+      // Check if this is a recognized disconnect reason
+      const isKnownReason = statusCode && this.knownDisconnectReasons.includes(statusCode);
+      
       // Handle unknown/unrecognized status codes (like 405)
+      // This includes non-standard HTTP codes or any code not in DisconnectReason enum
       if (!isKnownReason && statusCode) {
         logger.error('Unknown disconnect reason', { 
           statusCode,
@@ -165,8 +166,9 @@ class WingmanBot {
         return;
       }
       
-      // For known disconnect reasons (already handled loggedOut above), attempt reconnection
-      // At this point we only have known, recoverable disconnect reasons
+      // At this point, we have either:
+      // 1. A known, recoverable DisconnectReason (e.g., connectionClosed, connectionLost, etc.)
+      // 2. No status code (undefined/null) - treat as recoverable and attempt reconnection
       logger.info('Connection closed - attempting reconnection', { 
         reason: statusCode,
         reconnectAttempts: this.reconnectAttempts

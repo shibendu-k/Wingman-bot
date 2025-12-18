@@ -174,7 +174,7 @@ class WingmanBot {
           console.error('   2. STOP all other WhatsApp bots using this number');
           console.error('   3. Open WhatsApp on phone → Settings → Linked Devices');
           console.error('   4. LOG OUT ALL linked devices (computers, tablets, etc.)');
-          console.error('   5. WAIT 30-60 seconds for WhatsApp servers to sync');
+          console.error('   5. WAIT 30 seconds for WhatsApp servers to sync');
           console.error('   6. Delete auth folder (THIS IS CRITICAL):');
           console.error('      Linux/Mac: rm -rf auth_info_baileys');
           console.error('      Windows: rmdir /s /q auth_info_baileys');

@@ -24,6 +24,9 @@ A production-ready, military-grade encrypted WhatsApp bot that helps you craft p
 - ✅ **Tone Analyzer** - Detect emotional tone
 - ✅ **Export & Backup** - Complete data management
 - ✅ **Enhanced Privacy** - Phone masking, input sanitization
+- ✅ **👻 Ghost Read Mode** - Read messages without blue ticks
+- ✅ **😴 Auto-Sleep Mode** - Appear offline after inactivity (anti-ban)
+- ✅ **⏱️ Typing Simulation** - Human-like typing delays (1-3 seconds)
 
 ---
 
@@ -66,6 +69,43 @@ A production-ready, military-grade encrypted WhatsApp bot that helps you craft p
 - Allowed groups configuration
 - Ignores unauthorized users silently
 - JID validation
+
+### 👻 **Ghost Read Mode**
+- **Read Without Blue Ticks**: Messages are stored silently
+- **Perfect Stealth**: No "read" receipts sent
+- **Per-Contact Control**: Enable/disable for specific contacts
+- **Manual Marking**: Send blue ticks only when ready
+- **Strategic Timing**: Take time to craft perfect replies
+
+**Why This Matters:**
+- 🎯 No pressure from "seen" status
+- 🤔 Time to think before responding
+- 👻 Complete reading stealth
+- 💡 Perfect for crushes, important texts, awkward situations
+
+### 😴 **Auto-Sleep Mode**
+- **Auto-Sleep**: Appears offline after 15 minutes of inactivity
+- **Anti-Ban Protection**: Mimics real human behavior
+- **Manual Control**: Sleep/wake commands available
+- **Seamless Wake**: Automatically wakes on command
+
+**Why This Matters:**
+- 🚫 Avoid WhatsApp bans (constant "online" is suspicious)
+- 👤 Look human (real people aren't online 24/7)
+- 🔒 Privacy (don't show "last seen" constantly)
+- 🎭 Natural behavior patterns
+
+### ⏱️ **Typing Simulation**
+- **Random Delays**: 1-3 seconds before messages
+- **"Typing..." Indicator**: Shows to recipient
+- **Human-Like**: Varies timing each time
+- **Believable**: Makes replies look natural
+
+**Why This Matters:**
+- 🤖 Instant replies look like bots
+- ⏱️ Humans take time to type
+- 💯 100% believable conversations
+- 🎭 Natural feel to all replies
 
 ---
 
@@ -129,6 +169,17 @@ Send via WhatsApp:
 !quick delete <trigger>      Delete quick reply
 !rewrite <style> | <msg>     Rewrite message in different style
 !tone <message>              Analyze emotional tone
+```
+
+### **👻 Ghost Mode & Presence**
+```
+!ghost <contact>             Enable ghost read for contact
+!ghost off <contact>         Disable ghost read
+!ghost                       List all ghost contacts
+!readnow                     Mark ghost messages as read (send blue ticks)
+!status                      Show bot status (sleep, ghost mode, etc.)
+!sleep                       Manually put bot to sleep (appear offline)
+!wake                        Manually wake up bot
 ```
 
 ### **📊 Analysis & Insights**
@@ -235,6 +286,62 @@ Bot: ✍️ ROMANTIC version:
      I can't stop thinking about how wonderful our time together was.
      Every moment with you feels like magic, and I'm already counting
      down until I see you again. You made my day perfect. ✨
+```
+
+### **Example 7: Ghost Read Mode** 👻
+```
+# Enable ghost reading for a contact
+You: !ghost Priya
+
+Bot: 👻 Ghost read enabled for: Priya
+     
+     ✅ Messages will be stored without blue ticks
+     💡 Use !readnow when ready to send blue ticks
+
+# Now when Priya sends messages:
+# - Bot stores them silently
+# - NO blue ticks sent
+# - You can read and think about your response
+
+# When you're ready to send blue ticks:
+You: !readnow
+
+Bot: ✅ Marked 3 message(s) as read
+     
+     💙 Blue ticks sent!
+
+# Perfect timing! Looks natural! 🎯
+```
+
+### **Example 8: Sleep Mode & Status** 😴
+```
+# Check bot status
+You: !status
+
+Bot: 🤖 Bot Status Report
+     
+     🔐 System: 🔓 UNLOCKED
+     💤 Sleep Mode: Enabled
+     😴 Currently: Awake
+     ⏱️ Last Activity: 2m 30s
+     📊 Presence: available
+     
+     👻 Ghost Read Status:
+     Active Contacts: 1
+     Pending Messages: 0 chat(s)
+     
+     💡 Ghost contacts: Priya
+
+# Manually put bot to sleep (appear offline)
+You: !sleep
+
+Bot: 😴 Bot going to sleep...
+     
+     ✅ Appearing offline now
+     💡 Bot will wake up automatically when you send a command
+
+# Bot automatically sleeps after 15 minutes of inactivity
+# This makes it look more human and helps avoid WhatsApp bans!
 ```
 
 ---

@@ -124,6 +124,10 @@ dist
 
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # yarn v3
 .pnp.*
@@ -138,9 +142,21 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# Package manager
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# OS files
+.DS_Store
+Thumbs.db
+
 # Wingman Bot specific
 .env
 auth_info_baileys/
+auth_info/
 data/
+*.enc
 backups/
 logs/
+*.log

@@ -143,12 +143,12 @@ class WingmanBot {
       
       // Check if this is a recognized disconnect reason
       // Use typeof to handle 0 properly (0 is a valid number but falsy)
-      const hasStatusCode = typeof statusCode === 'number';
-      const isKnownReason = hasStatusCode && KNOWN_DISCONNECT_REASONS.has(statusCode);
+      const hasNumericStatusCode = typeof statusCode === 'number';
+      const isKnownReason = hasNumericStatusCode && KNOWN_DISCONNECT_REASONS.has(statusCode);
       
       // Handle unknown/unrecognized status codes (like 405)
       // This includes non-standard HTTP codes or any code not in DisconnectReason enum
-      if (hasStatusCode && !isKnownReason) {
+      if (hasNumericStatusCode && !isKnownReason) {
         logger.error('Unknown disconnect reason', { 
           statusCode,
           error: lastDisconnect?.error?.message,

@@ -20,6 +20,14 @@ class WingmanBot {
   constructor() {
     this.sock = null;
     this.isReady = false;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 10;
+    this.isReconnecting = false;
+    this.reconnectTimeout = null;
+    
+    // Reconnection delay constants (in milliseconds)
+    this.initialReconnectDelay = 3000;  // 3 seconds
+    this.maxReconnectDelay = 60000;     // 60 seconds (1 minute)
   }
 
   /**
@@ -56,6 +64,60 @@ class WingmanBot {
   }
 
   /**
+   * Reconnect to WhatsApp
+   */
+  async reconnect() {
+    if (this.isReconnecting) {
+      logger.info('Reconnection already in progress, skipping...');
+      return;
+    }
+
+    this.isReconnecting = true;
+
+    try {
+      // Clean up old socket if it exists
+      if (this.sock) {
+        try {
+          // Remove all event listeners to prevent memory leaks
+          this.sock.ev.removeAllListeners();
+          
+          // Close the socket if possible
+          if (typeof this.sock.end === 'function') {
+            try {
+              await this.sock.end();
+            } catch (endError) {
+              logger.error('Failed to close socket connection', endError);
+            }
+          }
+        } catch (cleanupError) {
+          logger.error('Error during socket cleanup', cleanupError);
+        }
+        
+        this.sock = null;
+      }
+
+      this.isReady = false;
+
+      // Wait a bit before creating new connection
+      await delay(1000);
+
+      // Start new connection
+      await this.start();
+      
+      // Note: isReconnecting flag is reset in handleConnection when connection opens
+      // reconnectAttempts counter is managed in handleConnection (incremented on disconnect, reset on success)
+    } catch (error) {
+      logger.error('Reconnection failed during start()', error);
+      
+      // Reset the flag so future reconnection attempts can proceed
+      this.isReconnecting = false;
+      
+      // Don't increment reconnectAttempts here as it's already incremented in handleConnection
+      // Just log the error - the next disconnect will trigger another attempt if within limits
+    }
+  }
+
+  /**
    * Handle connection updates
    */
   handleConnection(update) {
@@ -67,18 +129,54 @@ class WingmanBot {
     }
 
     if (connection === 'close') {
-      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+      const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
       
       logger.info('Connection closed', { 
         shouldReconnect,
-        reason: lastDisconnect?.error?.output?.statusCode
+        reason: statusCode,
+        reconnectAttempts: this.reconnectAttempts
       });
 
-      if (shouldReconnect) {
-        setTimeout(() => this.start(), 3000);
+      // Clean up existing reconnect timeout
+      if (this.reconnectTimeout) {
+        clearTimeout(this.reconnectTimeout);
+        this.reconnectTimeout = null;
+      }
+
+      if (shouldReconnect && !this.isReconnecting) {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+          logger.error('Max reconnection attempts reached. Please restart the bot manually.');
+          console.error('\n❌ Max reconnection attempts reached.');
+          console.error('💡 Please check your internet connection or WhatsApp authentication.');
+          console.error('💡 If the issue persists, delete auth_info_baileys folder and scan QR again.\n');
+          return;
+        }
+
+        this.reconnectAttempts++;
+        
+        // Exponential backoff: starts at initialReconnectDelay (3s) and doubles each attempt, capped at maxReconnectDelay (60s)
+        const backoffDelay = Math.min(
+          this.initialReconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 
+          this.maxReconnectDelay
+        );
+        
+        logger.info('Scheduling reconnection', {
+          attempt: this.reconnectAttempts,
+          maxAttempts: this.maxReconnectAttempts,
+          delayMs: backoffDelay
+        });
+
+        console.log(`\n⏳ Reconnecting in ${backoffDelay / 1000} seconds... (Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+
+        this.reconnectTimeout = setTimeout(() => this.reconnect(), backoffDelay);
+      } else if (statusCode === DisconnectReason.loggedOut) {
+        console.log('\n🔓 Logged out from WhatsApp. Please restart the bot and scan QR code again.\n');
       }
     } else if (connection === 'open') {
       this.isReady = true;
+      this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+      this.isReconnecting = false;
       
       // Initialize presence manager
       presenceManager.init(this.sock);
